@@ -13,6 +13,8 @@ and sx =
   | SAssign of string * sexpr
   | SCall of string * sexpr list
   | SNoexpr
+  | SChar_literal of char
+  | SString_literal of string
 
 type sstmt =
     SBlock of sstmt list
@@ -48,7 +50,7 @@ let rec string_of_sexpr (t, e) =
   | SCall(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
   | SNoexpr -> ""
-				  ) ^ ")"				     
+          ) ^ ")"
 
 let rec string_of_sstmt = function
     SBlock(stmts) ->

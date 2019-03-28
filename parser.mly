@@ -6,11 +6,13 @@ open Ast
 
 %token SEMI LPAREN RPAREN LBRACE RBRACE COMMA PLUS MINUS TIMES DIVIDE ASSIGN
 %token NOT EQ NEQ LT LEQ GT GEQ AND OR
-%token RETURN IF ELSE FOR WHILE INT BOOL FLOAT VOID
+%token RETURN IF ELSE FOR WHILE INT BOOL CHAR STRING FLOAT VOID
 %token <int> LITERAL
 %token <bool> BLIT
 %token <string> ID FLIT
 %token EOF
+%token <char> CHAR_LITERAL
+%token <string> STRING_LITERAL
 
 %start program
 %type <Ast.program> program
@@ -53,10 +55,12 @@ formal_list:
   | formal_list COMMA typ ID { ($3,$4) :: $1 }
 
 typ:
-    INT   { Int   }
-  | BOOL  { Bool  }
-  | FLOAT { Float }
-  | VOID  { Void  }
+    INT     { Int    }
+  | BOOL    { Bool   }
+  | FLOAT   { Float  }
+  | VOID    { Void   }
+  | CHAR    { Char   }
+  | STRING  { String }
 
 vdecl_list:
     /* nothing */    { [] }
@@ -85,9 +89,11 @@ expr_opt:
 
 expr:
     LITERAL          { Literal($1)            }
-  | FLIT	     { Fliteral($1)           }
+  | FLIT	           { Fliteral($1)           }
   | BLIT             { BoolLit($1)            }
   | ID               { Id($1)                 }
+  | CHAR_LITERAL     { Char_literal($1)       }
+  | STRING_LITERAL   { String_literal($1)     }
   | expr PLUS   expr { Binop($1, Add,   $3)   }
   | expr MINUS  expr { Binop($1, Sub,   $3)   }
   | expr TIMES  expr { Binop($1, Mult,  $3)   }

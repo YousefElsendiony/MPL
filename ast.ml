@@ -5,7 +5,7 @@ type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
 
 type uop = Neg | Not
 
-type typ = Int | Bool | Float | Void
+type typ = Int | Bool | Float | Void | Char | String
 
 type bind = typ * string
 
@@ -19,6 +19,8 @@ type expr =
   | Assign of string * expr
   | Call of string * expr list
   | Noexpr
+  | Char_literal of char
+  | String_literal of string
 
 type stmt =
     Block of stmt list
@@ -71,6 +73,8 @@ let rec string_of_expr = function
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | Noexpr -> ""
+  | Char_literal(l) -> Char.escaped l
+  | String_literal(l) -> l
 
 let rec string_of_stmt = function
     Block(stmts) ->
@@ -86,10 +90,12 @@ let rec string_of_stmt = function
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
 
 let string_of_typ = function
-    Int -> "int"
-  | Bool -> "bool"
+    Int   -> "int"
+  | Bool  -> "bool"
   | Float -> "float"
-  | Void -> "void"
+  | Void  -> "void"
+  | Char  -> "char"
+  | String-> "string"
 
 let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
 
