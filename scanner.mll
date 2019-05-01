@@ -41,6 +41,8 @@ rule token = parse
 | "void"   { VOID }
 | "true"   { BLIT(true)  }
 | "false"  { BLIT(false) }
+| "packet" { PACKET }
+| "message"{ MESSAGE }
 | digits as lxm { LITERAL(int_of_string lxm) }
 | '''[^ '\\' ''' '"']?''' as lxm { CHAR_LITERAL(lxm.[1]) }
 | ''''\\'[''' '"' '\\' 't' 'n']''' as lxm { CHAR_LITERAL(lxm.[1]) }

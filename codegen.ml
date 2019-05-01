@@ -27,18 +27,20 @@ let translate (globals, functions) =
   let the_module = L.create_module context "MicroC" in
 
   (* Get types from the context *)
-  let i32_t      = L.i32_type    context
+  let i32_t      = L.i32_type    context (* 32 bit for integer *)
   and i8_t       = L.i8_type     context
-  and i1_t       = L.i1_type     context
+  and i1_t       = L.i1_type     context (* 1 bit for Bool *)
   and float_t    = L.double_type context
   and void_t     = L.void_type   context in
 
-  (* Return the LLVM type for a MicroC type *)
+  (* Return the LLVM type for a MicroC type. AST to llvm type. *)
   let ltype_of_typ = function
       A.Int   -> i32_t
     | A.Bool  -> i1_t
     | A.Float -> float_t
     | A.Void  -> void_t
+    | A.Char  -> i8_t
+    | A.String -> L.pointer_type i8_t
   in
 
   (* Create a map of global variables after creating each *)
@@ -77,7 +79,10 @@ let translate (globals, functions) =
     let builder = L.builder_at_end context (L.entry_block the_function) in
 
     let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder
-    and float_format_str = L.build_global_stringptr "%g\n" "fmt" builder in
+    and float_format_str = L.build_global_stringptr "%g\n" "fmt" builder
+    and char_format_str = L.build_global_stringptr "%c\n" "fmt" builder
+    and string_format_str = L.build_global_stringptr "%s\n" "fmt" builder
+    in
 
     (* Construct the function's "locals": formal arguments and locally
        declared variables.  Allocate each on the stack, initialize their
@@ -112,6 +117,8 @@ let translate (globals, functions) =
 	SLiteral i  -> L.const_int i32_t i
       | SBoolLit b  -> L.const_int i1_t (if b then 1 else 0)
       | SFliteral l -> L.const_float_of_string float_t l
+      | SChar_literal c -> L.const_int i8_t (Char.code c)
+      | SString_literal s -> L.build_global_stringptr s "tmp" builder
       | SNoexpr     -> L.const_int i32_t 0
       | SId s       -> L.build_load (lookup s) s builder
       | SAssign (s, e) -> let e' = expr builder e in
@@ -158,7 +165,10 @@ let translate (globals, functions) =
           | A.Not                  -> L.build_not) e' "tmp" builder
       | SCall ("print", [e]) | SCall ("printb", [e]) ->
 	  L.build_call printf_func [| int_format_str ; (expr builder e) |]
-	    "printf" builder
+      "printf" builder
+      | SCall ("prints", [e]) -> 
+    L.build_call printf_func [| string_format_str; (expr builder e)|] "printf" builder
+
       | SCall ("printbig", [e]) ->
 	  L.build_call printbig_func [| (expr builder e) |] "printbig" builder
       | SCall ("printf", [e]) -> 
