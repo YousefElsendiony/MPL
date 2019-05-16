@@ -68,8 +68,6 @@ typ:
   | CHAR    { Char     }
   | BYTE    { Byte     }
   | STRING  { String   }
-  | INT_    { Pointer(Int) }
-  | BOOL_   { Pointer(Bool)}
   | STRUCT ID { Struct ($2) }
 
 sdecl:
@@ -130,6 +128,7 @@ expr:
   | MINUS expr %prec NOT { Unop(Neg, $2)      }
   | NOT expr         { Unop(Not, $2)          }
   | ID ASSIGN expr   { Assign($1, $3)         }
+  | DOLLAR expr      { Dollar($2)           }
   | ID LPAREN args_opt RPAREN { Call($1, $3)  }
   | LPAREN expr RPAREN { $2                   }
 

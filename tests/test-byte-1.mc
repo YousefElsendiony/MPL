@@ -1,7 +1,7 @@
 int main()
 {
-  byte a = 0x53;
-
+  byte a = 53;
+  $53;
   printb(a);
 
   return 0;

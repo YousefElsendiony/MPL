@@ -23,6 +23,7 @@ type expr =
   | String_literal of string
   | Array of expr list
   | ArrayAccess of expr * expr
+  | Dollar of expr
 
 type stmt =
     Block of stmt list
@@ -78,6 +79,7 @@ let rec string_of_expr = function
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
   | Unop(o, e) -> string_of_uop o ^ string_of_expr e
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
+  | Dollar(l) ->  "0x"^string_of_expr l
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | Noexpr -> ""

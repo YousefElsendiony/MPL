@@ -26,8 +26,6 @@ rule token = parse
 | "!="     { NEQ }
 | '<'      { LT }
 | "<="     { LEQ }
-| "int*"   { INT_ }
-| "bool*"  { BOOL_ }
 | ">"      { GT }
 | ">="     { GEQ }
 | "&&"     { AND }
