@@ -13,7 +13,7 @@ before_install:
   - wget http://www.ferzkopp.net/Software/SDL2_gfx/SDL2_gfx-1.0.3.tar.gz
 
 install:
-  - bash sudo apt install opam ocaml llvm llvm-runtime m4
+  - bash sudo apt-get install opam ocaml llvm llvm-runtime m4
   - bash opam init
   - bash opam install llvm.3.8
 

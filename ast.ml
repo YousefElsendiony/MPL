@@ -105,6 +105,7 @@ let rec string_of_typ = function
   | Float -> "float"
   | Void  -> "void"
   | Char  -> "char"
+  | Byte  -> "byte"
   | String-> "string"
   | Pointer(t) -> string_of_typ t ^ " *"
   | Struct(id) -> "struct" ^ id
