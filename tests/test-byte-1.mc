@@ -1,9 +1,8 @@
 int main()
 {
-  int a;
+  byte a = 0x53;
 
-  a = [1, 2, 3];
-  print(a@1);
+  printb(a);
 
   return 0;
 }

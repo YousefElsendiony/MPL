@@ -14,7 +14,7 @@ rule token = parse
 | '}'      { RBRACE }
 | '['      { LARRAY }
 | ']'      { RARRAY }
-| '@'	     { AT }
+| '$'      { DOLLAR }
 | ';'      { SEMI }
 | ','      { COMMA }
 | '+'      { PLUS }
