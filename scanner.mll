@@ -46,6 +46,7 @@ rule token = parse
 | "void"   { VOID }
 | "true"   { BLIT(true)  }
 | "false"  { BLIT(false) }
+| "struct" { STRUCT }
 | "packet" { PACKET }
 | "message"{ MESSAGE }
 | digits as lxm { LITERAL(int_of_string lxm) }

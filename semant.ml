@@ -61,7 +61,17 @@ let check (globals, functions) =
   (* Collect all function names into one symbol table *)
   let function_decls = List.fold_left add_func built_in_decls functions
   in
-  
+
+  (*
+  let struct_decls = List.fold_left (fun m st -> StringMap.add st.sname st m)
+    StringMap.empty structs
+  in
+
+  let struct_decl s = try StringMap.find s struct_decls
+      with Not_found -> raise (Failure ("unrecognized struct" ^ s))
+  in
+*)
+
   (* Return a function from our symbol table *)
   let find_func s = 
     try StringMap.find s function_decls

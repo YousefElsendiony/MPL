@@ -5,7 +5,7 @@ type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
 
 type uop = Neg | Not
 
-type typ = Int | Bool | Float | Void | Char | String | Pointer of typ
+type typ = Int | Bool | Float | Void | Char | String | Pointer of typ | Struct of string
 
 type bind = typ * string
 
@@ -39,6 +39,12 @@ type func_decl = {
     locals : bind list;
     body : stmt list;
   }
+
+type struct_decl = {
+    sname: string;
+    sformals: bind list;
+ }
+
 
 type program = bind list * func_decl list
 
@@ -101,6 +107,7 @@ let rec string_of_typ = function
   | Char  -> "char"
   | String-> "string"
   | Pointer(t) -> string_of_typ t ^ " *"
+  | Struct(id) -> "struct" ^ id
 
 let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
 
@@ -111,6 +118,9 @@ let string_of_fdecl fdecl =
   String.concat "" (List.map string_of_vdecl fdecl.locals) ^
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "}\n"
+
+let string_of_sdecl sdecl =
+  "struct " ^ sdecl.sname ^ String.concat "{\n" (List.map string_of_vdecl sdecl.sformals) ^ "\n}\n"
 
 let string_of_program (vars, funcs) =
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
