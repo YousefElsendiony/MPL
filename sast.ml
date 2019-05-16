@@ -15,6 +15,8 @@ and sx =
   | SNoexpr
   | SChar_literal of char
   | SString_literal of string
+  | SArray of sexpr list
+  | SArrayAccess of sexpr * sexpr
 
 type sstmt =
     SBlock of sstmt list
@@ -49,6 +51,8 @@ let rec string_of_sexpr (t, e) =
       string_of_sexpr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_sexpr e2
   | SUnop(o, e) -> string_of_uop o ^ string_of_sexpr e
   | SAssign(v, e) -> v ^ " = " ^ string_of_sexpr e
+  | SArray(el) -> "[ " ^ String.concat ", " (List.map string_of_sexpr el) ^ " ]"
+  | SArrayAccess(l, i) -> string_of_sexpr l ^ " @ " ^ string_of_sexpr i
   | SCall(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
   | SNoexpr -> ""

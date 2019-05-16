@@ -148,6 +148,31 @@ let check (globals, functions) =
           in 
           let args' = List.map2 check_call fd.formals args
           in (fd.typ, SCall(fname, args'))
+    | Array(el) ->
+        let rec check_if_type ty = function 
+        [] -> []
+        | e :: tl -> let(t, e') = expr e in 
+          if ty = t then (t, e') :: check_if_type ty tl
+            else raise (Failure ("All elements must be of the same type " ^ 
+                string_of_typ ty ^ ", encountered " ^
+                string_of_sexpr (t, e') ^ " of type " ^ string_of_typ t))
+    in 
+    let get_first_type = function 
+        [] -> Int 
+    | hd :: tl -> fst (expr hd)
+    in
+    let f_ty = get_first_type el in 
+    let el' = check_if_type f_ty el 
+    in (Pointer(f_ty), SArray(el'))
+
+    | ArrayAccess(l, i) -> 
+    let get_el_type = function 
+      Pointer(f_ty) -> f_ty
+    in 
+    let sl = expr l in
+    let ty = get_el_type (fst sl) in
+   (ty , SArrayAccess(sl , (expr i)))
+
     in
 
     let check_bool_expr e = 

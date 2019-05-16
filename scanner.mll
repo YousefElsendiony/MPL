@@ -12,6 +12,9 @@ rule token = parse
 | ')'      { RPAREN }
 | '{'      { LBRACE }
 | '}'      { RBRACE }
+| '['      { LARRAY }
+| ']'      { RARRAY }
+| '@'	     { AT }
 | ';'      { SEMI }
 | ','      { COMMA }
 | '+'      { PLUS }
@@ -23,6 +26,8 @@ rule token = parse
 | "!="     { NEQ }
 | '<'      { LT }
 | "<="     { LEQ }
+| "int*"   { INT_ }
+| "bool*"  { BOOL_ }
 | ">"      { GT }
 | ">="     { GEQ }
 | "&&"     { AND }

@@ -4,9 +4,10 @@
 open Ast
 %}
 
-%token SEMI LPAREN RPAREN LBRACE RBRACE COMMA PLUS MINUS TIMES DIVIDE ASSIGN
-%token NOT EQ NEQ LT LEQ GT GEQ AND OR
-%token RETURN IF ELSE FOR WHILE INT BOOL CHAR STRING FLOAT VOID PACKET MESSAGE
+%token SEMI LPAREN RPAREN LBRACE RBRACE LARRAY RARRAY COMMA
+%token PLUS MINUS TIMES DIVIDE ASSIGN
+%token NOT EQ NEQ LT LEQ GT GEQ AND OR AT
+%token RETURN IF ELSE FOR WHILE INT BOOL CHAR STRING FLOAT VOID PACKET MESSAGE INT_ BOOL_
 %token <int> LITERAL
 %token <bool> BLIT
 %token <string> ID FLIT
@@ -19,9 +20,12 @@ open Ast
 
 %nonassoc NOELSE
 %nonassoc ELSE
+%nonassoc LARRAY
+%nonassoc RARRAY
 %right ASSIGN
 %left OR
 %left AND
+%left AT
 %left EQ NEQ
 %left LT GT LEQ GEQ
 %left PLUS MINUS
@@ -55,12 +59,14 @@ formal_list:
   | formal_list COMMA typ ID { ($3,$4) :: $1 }
 
 typ:
-    INT     { Int    }
-  | BOOL    { Bool   }
-  | FLOAT   { Float  }
-  | VOID    { Void   }
-  | CHAR    { Char   }
-  | STRING  { String }
+    INT     { Int      }
+  | BOOL    { Bool     }
+  | FLOAT   { Float    }
+  | VOID    { Void     }
+  | CHAR    { Char     }
+  | STRING  { String   }
+  | INT_    { Pointer(Int) }
+  | BOOL_   { Pointer(Bool)}
 
 vdecl_list:
     /* nothing */    { [] }
@@ -106,6 +112,8 @@ expr:
   | expr GEQ    expr { Binop($1, Geq,   $3)   }
   | expr AND    expr { Binop($1, And,   $3)   }
   | expr OR     expr { Binop($1, Or,    $3)   }
+  | LARRAY args_opt RARRAY {  Array ($2)      }
+  | expr AT expr    { ArrayAccess($1, $3)     }
   | MINUS expr %prec NOT { Unop(Neg, $2)      }
   | NOT expr         { Unop(Not, $2)          }
   | ID ASSIGN expr   { Assign($1, $3)         }
