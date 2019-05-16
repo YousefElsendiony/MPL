@@ -5,7 +5,7 @@ type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
 
 type uop = Neg | Not
 
-type typ = Int | Bool | Float | Void | Char | String | Pointer of typ | Struct of string
+type typ = Int | Bool | Float | Void | Char | String | Pointer of typ | Struct of string | Byte
 
 type bind = typ * string
 

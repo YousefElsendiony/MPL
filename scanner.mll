@@ -46,6 +46,7 @@ rule token = parse
 | "void"   { VOID }
 | "true"   { BLIT(true)  }
 | "false"  { BLIT(false) }
+| "byte"   { BYTE }
 | "struct" { STRUCT }
 | "packet" { PACKET }
 | "message"{ MESSAGE }

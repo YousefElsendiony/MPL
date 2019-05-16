@@ -7,7 +7,7 @@ open Ast
 %token SEMI LPAREN RPAREN LBRACE RBRACE LARRAY RARRAY COMMA
 %token PLUS MINUS TIMES DIVIDE ASSIGN
 %token NOT EQ NEQ LT LEQ GT GEQ AND OR AT
-%token RETURN IF ELSE FOR WHILE INT BOOL CHAR STRING FLOAT VOID STRUCT PACKET MESSAGE INT_ BOOL_
+%token RETURN IF ELSE FOR WHILE INT BOOL CHAR STRING FLOAT VOID STRUCT PACKET MESSAGE INT_ BOOL_ BYTE
 %token <int> LITERAL
 %token <bool> BLIT
 %token <string> ID FLIT
@@ -64,6 +64,7 @@ typ:
   | FLOAT   { Float    }
   | VOID    { Void     }
   | CHAR    { Char     }
+  | BYTE    { Byte     }
   | STRING  { String   }
   | INT_    { Pointer(Int) }
   | BOOL_   { Pointer(Bool)}
