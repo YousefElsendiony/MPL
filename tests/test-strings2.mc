@@ -1,7 +1,10 @@
 int main()
 {
   prints("Mixed Strings and Chars testing!");
-  printc('a');
+  print(11);
+  /* prints("a"); */
+  prints("b");
+  print(55);
 
   return 0;
 }
