@@ -14,7 +14,7 @@ before_install:
   - sudo apt-get install opam ocaml llvm llvm-runtime m4
 
 install:
-  - opam init
+  - opam init --yes --no-setup
   - opam install llvm.3.8
 
 before_script:

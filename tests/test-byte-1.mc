@@ -1,8 +1,7 @@
 int main()
 {
   byte a = 53;
-  $53;
-  printb(a);
+  printb($a);
 
   return 0;
 }
