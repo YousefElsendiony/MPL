@@ -3,7 +3,7 @@
 type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
           And | Or
 
-type uop = Neg | Not
+type uop = Neg | Not | Dollar
 
 type typ = Int | Bool | Float | Void | Char | String | Pointer of typ | Struct of string | Byte
 
@@ -23,7 +23,6 @@ type expr =
   | String_literal of string
   | Array of expr list
   | ArrayAccess of expr * expr
-  | Dollar of expr
 
 type stmt =
     Block of stmt list
@@ -68,6 +67,7 @@ let string_of_op = function
 let string_of_uop = function
     Neg -> "-"
   | Not -> "!"
+  | Dollar -> "$"
 
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
@@ -77,9 +77,12 @@ let rec string_of_expr = function
   | Id(s) -> s
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
-  | Unop(o, e) -> string_of_uop o ^ string_of_expr e
+  | Unop(o, e) -> 
+      let converted_string = match o with 
+        Dollar  ->  Printf.sprintf "%X" (int_of_string (string_of_expr e))
+        | _     ->  string_of_expr e
+      in  string_of_uop o ^ converted_string
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
-  | Dollar(l) ->  "0x"^string_of_expr l
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | Noexpr -> ""

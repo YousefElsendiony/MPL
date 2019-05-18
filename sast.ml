@@ -17,7 +17,6 @@ and sx =
   | SString_literal of string
   | SArray of sexpr list
   | SArrayAccess of sexpr * sexpr
-  | SDollar of sexpr
 
 type sstmt =
     SBlock of sstmt list
@@ -50,11 +49,14 @@ let rec string_of_sexpr (t, e) =
   | SString_literal(l) -> l
   | SBinop(e1, o, e2) ->
       string_of_sexpr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_sexpr e2
-  | SUnop(o, e) -> string_of_uop o ^ string_of_sexpr e
+  | SUnop(o, e) -> 
+      let converted_Sstring = match o with 
+        Dollar  ->  Printf.sprintf "%X" (int_of_string (string_of_sexpr e))
+        | _     ->  string_of_sexpr e
+      in  string_of_uop o ^ converted_Sstring
   | SAssign(v, e) -> v ^ " = " ^ string_of_sexpr e
   | SArray(el) -> "[ " ^ String.concat ", " (List.map string_of_sexpr el) ^ " ]"
   | SArrayAccess(l, i) -> string_of_sexpr l ^ " @ " ^ string_of_sexpr i
-  | SDollar(l) -> "0x"^string_of_sexpr l
   | SCall(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
   | SNoexpr -> ""

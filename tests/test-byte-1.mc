@@ -1,7 +1,8 @@
 int main()
 {
-  byte a = 53;
-  printb($a);
+  Byte a = 15;
+  print($15);
+  prints("Example of Byte and Dollar operator.");
 
   return 0;
 }
