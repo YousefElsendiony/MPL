@@ -7,6 +7,7 @@ and sx =
     SLiteral of int
   | SFliteral of string
   | SBoolLit of bool
+  | SArrayLiteral of sexpr list * typ
   | SId of string
   | SBinop of sexpr * op * sexpr
   | SUnop of uop * sexpr
@@ -15,8 +16,8 @@ and sx =
   | SNoexpr
   | SChar_literal of char
   | SString_literal of string
-  | SArray of sexpr list
-  | SArrayAccess of sexpr * sexpr
+  | SArrayAccess of string * sexpr * typ
+  | SArrayAssign of string * sexpr * sexpr
 
 type sstmt =
     SBlock of sstmt list
@@ -47,6 +48,8 @@ let rec string_of_sexpr (t, e) =
   | SId(s) -> s
   | SChar_literal(l) -> Char.escaped l
   | SString_literal(l) -> l
+  | SAssign(v, e) -> v ^ " = " ^ string_of_sexpr e
+  | SArrayLiteral(el, t) -> string_of_typ t ^ "[" ^ String.concat ", " (List.map (fun e -> string_of_sexpr e) el) ^ "]"
   | SBinop(e1, o, e2) ->
       string_of_sexpr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_sexpr e2
   | SUnop(o, e) -> 
@@ -54,9 +57,8 @@ let rec string_of_sexpr (t, e) =
         Dollar  ->  Printf.sprintf "%X" (int_of_string (string_of_sexpr e))
         | _     ->  string_of_sexpr e
       in  string_of_uop o ^ converted_Sstring
-  | SAssign(v, e) -> v ^ " = " ^ string_of_sexpr e
-  | SArray(el) -> "[ " ^ String.concat ", " (List.map string_of_sexpr el) ^ " ]"
-  | SArrayAccess(l, i) -> string_of_sexpr l ^ " @ " ^ string_of_sexpr i
+  | SArrayAccess(a, e, t) -> string_of_typ t ^ " " ^ a ^ "[" ^ string_of_sexpr e ^ "]"
+  | SArrayAssign(a, e1, e2) -> a ^ "[" ^ string_of_sexpr e1 ^ "] = " ^ string_of_sexpr e2
   | SCall(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
   | SNoexpr -> ""

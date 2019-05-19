@@ -1,6 +1,6 @@
 int main()
 {
-  Byte a = 15;
+  byte a;
   print($15);
   prints("Example of Byte and Dollar operator.");
 

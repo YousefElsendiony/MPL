@@ -30,8 +30,14 @@ let translate (globals, functions) =
   let i32_t      = L.i32_type    context (* 32 bit for integer *)
   and i8_t       = L.i8_type     context
   and i1_t       = L.i1_type     context (* 1 bit for Bool *)
+  and array_t    = L.array_type          (* returns the array type containing n elements *)
   and float_t    = L.double_type context
   and void_t     = L.void_type   context in
+
+  let literal_to_val = function
+    A.Literal(i) -> i
+    | _ -> raise(Failure("Array type mismatched"))
+  in
 
   (* Return the LLVM type for a MicroC type. AST to llvm type. *)
   let rec ltype_of_typ = function
@@ -42,6 +48,9 @@ let translate (globals, functions) =
     | A.Void        -> void_t
     | A.Char        -> i8_t
     | A.String      -> L.pointer_type i8_t
+    | A.Array(typ, size) -> (match typ with
+                                A.Int -> array_t i32_t (literal_to_val size)
+                              | _ -> raise(Failure("Arrays working for int only")))
     | A.Pointer(t)  -> L.pointer_type (ltype_of_typ t)
   in
 
@@ -115,7 +124,7 @@ let translate (globals, functions) =
     in
 
     (* Construct code for an expression; return its value *)
-    let rec expr builder ((t_, e) : sexpr) = match e with
+    let rec expr builder ((_, e) : sexpr) = match e with
      SLiteral i  -> L.const_int i32_t i
       | SBoolLit b  -> L.const_int i1_t (if b then 1 else 0)
       | SFliteral l -> L.const_float_of_string float_t l
@@ -123,6 +132,7 @@ let translate (globals, functions) =
       | SString_literal s -> L.build_global_stringptr s "tmp" builder
       | SNoexpr     -> L.const_int i32_t 0
       | SId s       -> L.build_load (lookup s) s builder
+      | SArrayLiteral (l, t) -> L.const_array (ltype_of_typ t) (Array.of_list (List.map (expr builder) l))
       | SAssign (s, e) -> let e' = expr builder e in
                           ignore(L.build_store e' (lookup s) builder); e'
       | SBinop ((A.Float,_ ) as e1, op, e2) ->
@@ -159,34 +169,18 @@ let translate (globals, functions) =
               | A.Greater -> L.build_icmp L.Icmp.Sgt
               | A.Geq     -> L.build_icmp L.Icmp.Sge
               ) e1' e2' "tmp" builder
-    | SUnop(op, ((t, _) as e)) ->
-          let e' = expr builder e in
-        (match op with
-          A.Neg when t = A.Float -> L.build_fneg
-        | A.Dollar               -> L.build_neg
-        | A.Neg                  -> L.build_neg
-        | A.Not                  -> L.build_not) e' "tmp" builder
-    | SArray(el) ->
-          let sizeva = (List.length el) in
-          let size = L.const_int i32_t sizeva in
-          let ty = ltype_of_typ t_ in
-          let arr = L.build_array_malloc ty size "init1" builder in
-          let arr = L.build_pointercast arr ty "init2" builder in
-          let _ = L.build_bitcast size ty "init3" builder in
-          let values = List.map (expr builder) el in
-          let buildf i v =
-          (let arr_ptr =
-          L.build_gep arr [| (L.const_int i32_t (i)) |] "init4" builder in
-          ignore(L.build_store v arr_ptr builder);)
-        in
-        List.iteri buildf values; arr
-      | SArrayAccess(l, i) ->
-			    let idx = expr builder i  in
-			    let idx = L.build_add idx (L.const_int i32_t 0) "access1" builder in
-			    let arr = expr builder l in
-			    let res = L.build_gep arr [| idx |] "access2" builder in
-    L.build_load res "access3" builder
-
+      | SUnop(op, ((t, _) as e)) ->
+            let e' = expr builder e in
+                (match op with
+                  A.Neg when t = A.Float -> L.build_fneg
+                | A.Dollar               -> L.build_neg
+                | A.Neg                  -> L.build_neg
+                | A.Not                  -> L.build_not) e' "tmp" builder
+      | SArrayAccess (s, e, _) -> L.build_load (get_array_acc_address s e builder) s builder
+      | SArrayAssign (s, ea, eb) ->
+            let lsb = get_array_acc_address s ea builder in
+            let msb = expr builder eb in
+                  ignore (L.build_store msb lsb builder); msb
       | SCall ("print", [e]) | SCall ("printb", [e]) ->
 	  L.build_call printf_func [| int_format_str ; (expr builder e) |]
       "printf" builder
@@ -205,7 +199,9 @@ let translate (globals, functions) =
 	 let result = (match fdecl.styp with
                         A.Void -> ""
                       | _ -> f ^ "_result") in
-         L.build_call fdef (Array.of_list llargs) result builder
+         L.build_call fdef (Array.of_list llargs) result builder and 
+         get_array_acc_address s e1 builder = L.build_gep (lookup s)
+          [| (L.const_int i32_t 0); (expr builder e1) |] s builder
     in
 
     (* LLVM insists each basic block end with exactly one "terminator"

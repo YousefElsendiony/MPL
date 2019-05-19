@@ -20,13 +20,10 @@ open Ast
 
 %nonassoc NOELSE
 %nonassoc ELSE
-%nonassoc LARRAY
-%nonassoc RARRAY
 %right ASSIGN
 %right DOLLAR
 %left OR
 %left AND
-%left AT
 %left EQ NEQ
 %left LT GT LEQ GEQ
 %left PLUS MINUS
@@ -68,8 +65,10 @@ typ:
   | CHAR    { Char     }
   | BYTE    { Byte     }
   | STRING  { String   }
+  | array_t { $1       }
   | STRUCT ID { Struct ($2) }
 
+/*
 sdecl:
     STRUCT ID LBRACE vdecl_list RBRACE
       {
@@ -77,7 +76,7 @@ sdecl:
           sformals = $4;
       }
     }
-
+*/
 
 vdecl_list:
     /* nothing */    { [] }
@@ -85,6 +84,9 @@ vdecl_list:
 
 vdecl:
    typ ID SEMI { ($1, $2) }
+
+array_t:
+  typ LARRAY expr RARRAY { Array($1, $3) }
 
 stmt_list:
     /* nothing */  { [] }
@@ -105,12 +107,8 @@ expr_opt:
   | expr          { $1 }
 
 expr:
-    LITERAL          { Literal($1)            }
-  | FLIT	           { Fliteral($1)           }
-  | BLIT             { BoolLit($1)            }
+   literals          { $1                     }
   | ID               { Id($1)                 }
-  | CHAR_LITERAL     { Char_literal($1)       }
-  | STRING_LITERAL   { String_literal($1)     }
   | expr PLUS   expr { Binop($1, Add,   $3)   }
   | expr MINUS  expr { Binop($1, Sub,   $3)   }
   | expr TIMES  expr { Binop($1, Mult,  $3)   }
@@ -123,14 +121,29 @@ expr:
   | expr GEQ    expr { Binop($1, Geq,   $3)   }
   | expr AND    expr { Binop($1, And,   $3)   }
   | expr OR     expr { Binop($1, Or,    $3)   }
-  | LARRAY args_opt RARRAY {  Array ($2)      }
-  | expr AT expr    { ArrayAccess($1, $3)     }
+  | ID LARRAY expr RARRAY ASSIGN expr  { ArrayAssign($1, $3, $6) }
+  | ID LARRAY expr RARRAY   { ArrayAccess($1, $3) }
   | MINUS expr %prec NOT { Unop(Neg, $2)      }
   | NOT expr         { Unop(Not, $2)          }
   | ID ASSIGN expr   { Assign($1, $3)         }
   | DOLLAR expr      { Unop(Dollar, $2)       }
   | ID LPAREN args_opt RPAREN { Call($1, $3)  }
   | LPAREN expr RPAREN { $2                   }
+
+primitive_literals:
+    LITERAL          { Literal($1)            }
+  | FLIT             { Fliteral($1)           }
+  | CHAR_LITERAL     { Char_literal($1)       }
+  | STRING_LITERAL   { String_literal($1)     }
+  | BLIT             { BoolLit($1)            }
+
+literals:
+  primitive_literals { $1 }
+  | LARRAY array_literal RARRAY { ArrayLiteral(List.rev $2) }
+
+array_literal:
+  primitive_literals { [$1] }
+  | array_literal COMMA primitive_literals { $3 :: $1}
 
 args_opt:
     /* nothing */ { [] }

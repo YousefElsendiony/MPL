@@ -87,9 +87,12 @@ let check (globals, functions) =
 
     (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
-    let check_assign lvaluet rvaluet err =
-       if lvaluet = rvaluet then lvaluet else raise (Failure err)
-    in   
+  let rec check_assign lvaluet rvaluet err = match rvaluet with
+       Array(t1,_) -> (match t1 with
+            Int -> check_assign t1 Int err
+            | _ -> raise (Failure err))
+       | _ -> if lvaluet = rvaluet then lvaluet else raise (Failure err)
+   in
 
     (* Build local symbol table of variables for this function *)
     let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name ty m)
@@ -102,6 +105,11 @@ let check (globals, functions) =
       with Not_found -> raise (Failure ("undeclared identifier " ^ s))
     in
 
+    let access_type = function
+         Array(t, _) -> t
+        | _ -> raise (Failure("illegal array access"))
+    in
+
     (* Return a semantically-checked expression, i.e., with a type *)
     let rec expr = function
         Literal  l -> (Int, SLiteral l)
@@ -111,24 +119,24 @@ let check (globals, functions) =
       | String_literal s -> (String, SString_literal s)
       | Noexpr     -> (Void, SNoexpr)
       | Id s       -> (type_of_identifier s, SId s)
-      | Assign(var, e) as ex -> 
+      | Assign(var, e) as ex ->
           let lt = type_of_identifier var
           and (rt, e') = expr e in
-          let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^ 
+          let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
             string_of_typ rt ^ " in " ^ string_of_expr ex
           in (check_assign lt rt err, SAssign(var, (rt, e')))
-      | Unop(op, e) as ex -> 
+      | Unop(op, e) as ex ->
           let (t, e') = expr e in
           let ty = match op with
             Neg when t = Int || t = Float -> t
           | Not when t = Bool -> Bool
           | Dollar when t = Int -> t
-          | _ -> raise (Failure ("illegal unary operator " ^ 
+          | _ -> raise (Failure ("illegal unary operator " ^
                                  string_of_uop op ^ string_of_typ t ^
                                  " in " ^ string_of_expr ex))
           in (ty, SUnop(op, (t, e')))
-      | Binop(e1, op, e2) as e -> 
-          let (t1, e1') = expr e1 
+      | Binop(e1, op, e2) as e ->
+          let (t1, e1') = expr e1
           and (t2, e2') = expr e2 in
           (* All binary operators require operands of the same type *)
           let same = t1 = t2 in
@@ -145,51 +153,47 @@ let check (globals, functions) =
                        string_of_typ t1 ^ " " ^ string_of_op op ^ " " ^
                        string_of_typ t2 ^ " in " ^ string_of_expr e))
           in (ty, SBinop((t1, e1'), op, (t2, e2')))
-      | Call(fname, args) as call -> 
+      | Call(fname, args) as call ->
           let fd = find_func fname in
           let param_length = List.length fd.formals in
           if List.length args != param_length then
-            raise (Failure ("expecting " ^ string_of_int param_length ^ 
+            raise (Failure ("expecting " ^ string_of_int param_length ^
                             " arguments in " ^ string_of_expr call))
-          else let check_call (ft, _) e = 
-            let (et, e') = expr e in 
+          else let check_call (ft, _) e =
+            let (et, e') = expr e in
             let err = "illegal argument found " ^ string_of_typ et ^
               " expected " ^ string_of_typ ft ^ " in " ^ string_of_expr e
             in (check_assign ft et err, e')
-          in 
+          in
           let args' = List.map2 check_call fd.formals args
           in (fd.typ, SCall(fname, args'))
-    | Array(el) ->
-        let rec check_if_type ty = function 
-        [] -> []
-        | e :: tl -> let(t, e') = expr e in 
-          if ty = t then (t, e') :: check_if_type ty tl
-            else raise (Failure ("All elements must be of the same type " ^ 
-                string_of_typ ty ^ ", encountered " ^
-                string_of_sexpr (t, e') ^ " of type " ^ string_of_typ t))
-    in 
-    let get_first_type = function 
-        [] -> Int 
-    | hd :: tl -> fst (expr hd)
-    in
-    let f_ty = get_first_type el in 
-    let el' = check_if_type f_ty el 
-    in (Pointer(f_ty), SArray(el'))
 
-    | ArrayAccess(l, i) -> 
-    let get_el_type = function 
-      Pointer(f_ty) -> f_ty
-    in 
-    let sl = expr l in
-    let ty = get_el_type (fst sl) in
-   (ty , SArrayAccess(sl , (expr i)))
+      | ArrayLiteral l -> check_array_types l
+      | ArrayAccess(a, e) -> check_int_expr e; (type_of_identifier a, SArrayAccess(a, expr e, access_type (type_of_identifier a)))
+      | ArrayAssign(var, idx, num) -> check_int_expr num; check_int_expr idx; (type_of_identifier var, SArrayAssign(var, expr idx, expr num))
 
-    in
-
-    let check_bool_expr e = 
+    and check_int_expr e =
       let (t', e') = expr e
-      and err = "expected Boolean expression in " ^ string_of_expr e
-      in if t' != Bool then raise (Failure err) else (t', e') 
+      and err = "expected Int expression in " ^ string_of_expr e
+      in if t' != Int then raise (Failure err) else ignore e'
+
+    and get_arr_type e = match e with
+        Literal(_) :: ss -> get_arr_type ss
+      | [] -> Int
+      | _ -> raise (Failure("Unsupported Array Type"))
+
+    and check_array_types e =
+      let t = get_arr_type e in
+      let check_arr_el e = match e with
+        Literal(i) -> if t == Int then expr(Literal(i)) else expr(Fliteral(string_of_int i))        | _ -> raise (Failure("arrays only ints"))
+    in (Array (t, Literal(List.length e)), SArrayLiteral(List.map check_arr_el e, Array(t, Literal(List.length e))))
+
+    in
+
+    let check_bool_expr e =
+      let (t', e') = expr e
+        and err = "expected Boolean expression in " ^ string_of_expr e
+      in if t' != Bool then raise (Failure err) else (t', e')
     in
 
     (* Return a semantically-checked statement i.e. containing sexprs *)
@@ -204,7 +208,7 @@ let check (globals, functions) =
         else raise (
 	  Failure ("return gives " ^ string_of_typ t ^ " expected " ^
 		   string_of_typ func.typ ^ " in " ^ string_of_expr e))
-	    
+
 	    (* A block is correct if each statement is correct and nothing
 	       follows any Return statement.  Nested blocks are flattened. *)
       | Block sl -> 

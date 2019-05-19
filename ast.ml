@@ -5,14 +5,13 @@ type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
 
 type uop = Neg | Not | Dollar
 
-type typ = Int | Bool | Float | Void | Char | String | Pointer of typ | Struct of string | Byte
 
-type bind = typ * string
 
 type expr =
     Literal of int
   | Fliteral of string
   | BoolLit of bool
+  | ArrayLiteral of expr list
   | Id of string
   | Binop of expr * op * expr
   | Unop of uop * expr
@@ -21,8 +20,13 @@ type expr =
   | Noexpr
   | Char_literal of char
   | String_literal of string
-  | Array of expr list
-  | ArrayAccess of expr * expr
+  | ArrayAssign of string * expr * expr
+  | ArrayAccess of string * expr
+
+
+type typ = Int | Bool | Float | Void | Char | String | Pointer of typ | Struct of string | Byte | Array of typ * expr
+
+type bind = typ * string
 
 type stmt =
     Block of stmt list
@@ -69,11 +73,18 @@ let string_of_uop = function
   | Not -> "!"
   | Dollar -> "$"
 
+  let convert_array l conversion joiner =
+    let glob_item original data = original ^ (conversion data) ^ joiner in
+    let full = (List.fold_left glob_item "" l) in
+    "[" ^ String.sub full 0 ((String.length full) - 2) ^ "]"
+
+
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
   | Fliteral(l) -> l
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
+  | ArrayLiteral(el) -> "[" ^ String.concat ", " (List.map (fun e -> string_of_expr e) el) ^ "]"
   | Id(s) -> s
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
@@ -88,8 +99,8 @@ let rec string_of_expr = function
   | Noexpr -> ""
   | Char_literal(l) -> Char.escaped l
   | String_literal(l) -> l
-  | Array(el) -> "[ " ^ String.concat ", " (List.map string_of_expr el) ^ " ]"
-  | ArrayAccess(l, i) -> string_of_expr l ^ " @ " ^ string_of_expr i
+  | ArrayAccess(a, e) -> a ^ "[" ^ string_of_expr e ^ "]"
+  | ArrayAssign(a, e1, e2) -> a ^ "[" ^ string_of_expr e1 ^ "] = " ^ string_of_expr e2
 
 let rec string_of_stmt = function
     Block(stmts) ->
@@ -104,6 +115,10 @@ let rec string_of_stmt = function
       string_of_expr e3  ^ ") " ^ string_of_stmt s
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
 
+let rec repeat c = function
+  0 -> ""
+| n -> c ^ (repeat c (n - 1))
+
 let rec string_of_typ = function
     Int   -> "int"
   | Bool  -> "bool"
@@ -114,6 +129,7 @@ let rec string_of_typ = function
   | String-> "string"
   | Pointer(t) -> string_of_typ t ^ " *"
   | Struct(id) -> "struct" ^ id
+  | Array(t, e) -> string_of_typ t ^ "[" ^ string_of_expr e ^ "]"
 
 let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
 
