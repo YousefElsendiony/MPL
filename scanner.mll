@@ -20,6 +20,7 @@ rule token = parse
 | '+'      { PLUS }
 | '-'      { MINUS }
 | '*'      { TIMES }
+| '.'      { PERIOD }
 | '/'      { DIVIDE }
 | '='      { ASSIGN }
 | "=="     { EQ }

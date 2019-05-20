@@ -11,12 +11,14 @@ env:
 before_install:
   - wget https://raw.githubusercontent.com/ocaml/ocaml-ci-scripts/master/.travis-ocaml.sh
   - wget http://www.ferzkopp.net/Software/SDL2_gfx/SDL2_gfx-1.0.3.tar.gz
-  - sudo apt-get install opam ocaml llvm llvm-runtime m4
+  - sudo apt-get update --yes
+  - sudo apt-get upgrade --yes
+  - sudo apt-get install opam1.2 ocaml llvm llvm-runtime m4
 
 install:
   - opam --version
   - opam init --yes --no-setup
-  - opam install depext llvm --yes
+  - opam install llvm --yes
 
 before_script:
   - eval `opam config env` --auto-setup

@@ -22,6 +22,8 @@ type expr =
   | String_literal of string
   | ArrayAssign of string * expr * expr
   | ArrayAccess of string * expr
+  | Dereference of string * string
+  | MemAssign of string * string * expr
 
 
 type typ = Int | Bool | Float | Void | Char | String | Pointer of typ | Struct of string | Byte | Array of typ * expr
@@ -46,11 +48,11 @@ type func_decl = {
 
 type struct_decl = {
     sname: string;
-    sformals: bind list;
+    svar: bind list;
  }
 
 
-type program = bind list * func_decl list
+type program = bind list * func_decl list * struct_decl list
 
 (* Pretty-printing functions *)
 
@@ -101,6 +103,8 @@ let rec string_of_expr = function
   | String_literal(l) -> l
   | ArrayAccess(a, e) -> a ^ "[" ^ string_of_expr e ^ "]"
   | ArrayAssign(a, e1, e2) -> a ^ "[" ^ string_of_expr e1 ^ "] = " ^ string_of_expr e2
+  | Dereference (s, e) -> s ^ "." ^ e
+  | MemAssign (s, m, e) -> s ^ "." ^ m ^ " = " ^ (string_of_expr e)
 
 let rec string_of_stmt = function
     Block(stmts) ->
@@ -141,9 +145,11 @@ let string_of_fdecl fdecl =
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "}\n"
 
-let string_of_sdecl sdecl =
-  "struct " ^ sdecl.sname ^ String.concat "{\n" (List.map string_of_vdecl sdecl.sformals) ^ "\n}\n"
+  let string_of_sdecl sdecl =
+    "struct" ^ " " ^ sdecl.sname ^ "{\n" ^
+    String.concat "" (List.map string_of_vdecl sdecl.svar) ^ "};\n"
 
-let string_of_program (vars, funcs) =
+let string_of_program (vars, funcs, structs) =
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
-  String.concat "\n" (List.map string_of_fdecl funcs)
+  String.concat "\n" (List.map string_of_fdecl funcs) ^ "\n" ^
+  String.concat "\n" (List.map string_of_sdecl structs)

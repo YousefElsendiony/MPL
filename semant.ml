@@ -10,7 +10,7 @@ module StringMap = Map.Make(String)
 
    Check each global variable, then check each function *)
 
-let check (globals, functions) =
+let check (globals, functions, structs) =
 
   (* Verify a list of bindings has no void types or duplicate names *)
   let check_binds (kind : string) (binds : bind list) =
@@ -62,16 +62,6 @@ let check (globals, functions) =
   let function_decls = List.fold_left add_func built_in_decls functions
   in
 
-  (*
-  let struct_decls = List.fold_left (fun m st -> StringMap.add st.sname st m)
-    StringMap.empty structs
-  in
-
-  let struct_decl s = try StringMap.find s struct_decls
-      with Not_found -> raise (Failure ("unrecognized struct" ^ s))
-  in
-*)
-
   (* Return a function from our symbol table *)
   let find_func s = 
     try StringMap.find s function_decls
@@ -108,6 +98,27 @@ let check (globals, functions) =
     let access_type = function
          Array(t, _) -> t
         | _ -> raise (Failure("illegal array access"))
+    in
+
+    let get_struct_name (s : string) = match (type_of_identifier s) with
+           Struct n -> n
+          | _ -> raise (Failure ("Invalid access(.) operation for " ^ s))
+    in
+
+    let find_struct (id : string) = (
+        let rec find_svar = function
+            [] -> raise (Failure ("Cannot find struct " ^ id))
+          | sdecl :: _ when sdecl.sname = id -> sdecl.svar
+          | _ :: tl -> find_svar tl
+        in find_svar structs)
+    in
+
+    let get_smember_type (s : string) (e : string) = (
+        let rec get_member_type = function
+            [] -> raise (Failure ("Struct " ^ s ^ " does not have member " ^ e))
+          | (ty, name) :: _ when name = e -> ty
+          | _ :: tl -> get_member_type tl
+        in get_member_type (find_struct s))
     in
 
     (* Return a semantically-checked expression, i.e., with a type *)
@@ -171,6 +182,17 @@ let check (globals, functions) =
       | ArrayLiteral l -> check_array_types l
       | ArrayAccess(a, e) -> check_int_expr e; (type_of_identifier a, SArrayAccess(a, expr e, access_type (type_of_identifier a)))
       | ArrayAssign(var, idx, num) -> check_int_expr num; check_int_expr idx; (type_of_identifier var, SArrayAssign(var, expr idx, expr num))
+      | Dereference (s, m) ->
+        let n = get_struct_name s in
+        let ty = get_smember_type n m in (ty, SDereference(s, m))
+
+      | MemAssign (s, m, e) as ex ->
+        let n = get_struct_name s in
+        let lt = get_smember_type n m in
+        let (rt, e') = expr e in
+        let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
+            string_of_typ rt ^ " in " ^ string_of_expr ex
+        in (check_assign lt rt err, SMemAssign(s, m, (rt, e')))
 
     and check_int_expr e =
       let (t', e') = expr e
@@ -229,4 +251,29 @@ let check (globals, functions) =
 	SBlock(sl) -> sl
       | _ -> raise (Failure ("internal error: block didn't become a block?"))
     }
-  in (globals, List.map check_function functions)
+  in
+
+ (**** Check structs ****)
+ let check_structs (st_list : struct_decl list) =
+      (* check struct name *)
+      let rec struct_dups = function
+          [] -> ()
+        | (s1 :: s2 :: _) when s1.sname = s2.sname ->
+          raise (Failure ("duplicate struct name " ^ s1.sname))
+        | _ :: tl -> struct_dups tl
+      in struct_dups st_list;
+
+      (* check struct body *)
+      let struct_binds (st : struct_decl) =
+        if List.length st.svar = 0 then raise (Failure ("Empty struct body"))
+        else check_binds "struct" st.svar
+      in List.iter struct_binds st_list;
+
+      let check_struct (st : struct_decl) = {
+        ssname = st.sname;
+        ssvar = st.svar;
+      }
+  in List.map check_struct st_list
+
+in (globals, List.map check_function functions, check_structs structs)
+

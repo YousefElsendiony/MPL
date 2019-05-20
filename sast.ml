@@ -18,6 +18,8 @@ and sx =
   | SString_literal of string
   | SArrayAccess of string * sexpr * typ
   | SArrayAssign of string * sexpr * sexpr
+  | SDereference of string * string
+  | SMemAssign of string * string * sexpr
 
 type sstmt =
     SBlock of sstmt list
@@ -35,7 +37,12 @@ type sfunc_decl = {
     sbody : sstmt list;
   }
 
-type sprogram = bind list * sfunc_decl list
+type sstruct_decl = {
+  ssname : string;
+  ssvar : bind list;
+}
+
+type sprogram = bind list * sfunc_decl list * sstruct_decl list
 
 (* Pretty-printing functions *)
 
@@ -59,6 +66,8 @@ let rec string_of_sexpr (t, e) =
       in  string_of_uop o ^ converted_Sstring
   | SArrayAccess(a, e, t) -> string_of_typ t ^ " " ^ a ^ "[" ^ string_of_sexpr e ^ "]"
   | SArrayAssign(a, e1, e2) -> a ^ "[" ^ string_of_sexpr e1 ^ "] = " ^ string_of_sexpr e2
+  | SDereference (s, e) -> s ^ "." ^ e
+  | SMemAssign (s, m, e) -> s ^ "." ^ m ^ " = " ^ (string_of_sexpr e)
   | SCall(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
   | SNoexpr -> ""
@@ -86,6 +95,12 @@ let string_of_sfdecl fdecl =
   String.concat "" (List.map string_of_sstmt fdecl.sbody) ^
   "}\n"
 
-let string_of_sprogram (vars, funcs) =
+let string_of_ssdecl ssdecl =
+    "struct" ^ " " ^ ssdecl.ssname ^ "{\n" ^
+    String.concat "" (List.map string_of_vdecl ssdecl.ssvar) ^ "};\n"
+
+let string_of_sprogram (vars, funcs, structs) =
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
-  String.concat "\n" (List.map string_of_sfdecl funcs)
+  String.concat "\n" (List.map string_of_sfdecl funcs) ^ "\n" ^
+  String.concat "\n" (List.map string_of_ssdecl structs)
+

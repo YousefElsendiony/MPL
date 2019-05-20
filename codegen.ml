@@ -19,7 +19,7 @@ open Sast
 module StringMap = Map.Make(String)
 
 (* translate : Sast.program -> Llvm.module *)
-let translate (globals, functions) =
+let translate (globals, functions, structs) =
   let context    = L.global_context () in
 
   (* Create the LLVM compilation module into which
@@ -52,6 +52,7 @@ let translate (globals, functions) =
                                 A.Int -> array_t i32_t (literal_to_val size)
                               | _ -> raise(Failure("Arrays working for int only")))
     | A.Pointer(t)  -> L.pointer_type (ltype_of_typ t)
+    | A.Struct e    -> L.pointer_type (L.named_struct_type context e)
   in
 
   (* Create a map of global variables after creating each *)
@@ -62,6 +63,17 @@ let translate (globals, functions) =
         | _ -> L.const_int (ltype_of_typ t) 0
       in StringMap.add n (L.define_global n init the_module) m in
     List.fold_left global_var StringMap.empty globals in
+
+  let struct_decls : (L.lltype * sstruct_decl) StringMap.t =
+      let define_struct m sdecl = 
+        let get_sbody_ty ((ty, _) : A.bind) = ltype_of_typ ty in
+        let sname = sdecl.ssname
+        and svar_type = Array.of_list (List.map get_sbody_ty sdecl.ssvar) in
+        let stype = L.named_struct_type context sname in
+        L.struct_set_body stype svar_type false;
+        StringMap.add sname (stype, sdecl) m in
+      List.fold_left define_struct StringMap.empty structs
+  in
 
   let printf_t : L.lltype =
       L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
@@ -108,7 +120,13 @@ let translate (globals, functions) =
       (* Allocate space for any locally declared variables and add the
        * resulting registers to our map *)
       and add_local m (t, n) =
-	let local_var = L.build_alloca (ltype_of_typ t) n builder
+  let local_var = match t with
+          A.Struct e -> 
+            let (sty, _) = StringMap.find e struct_decls in
+            let ptr = L.build_alloca (L.pointer_type sty) n builder in
+            let sbody = L.build_malloc sty (n ^ "_body") builder in
+            ignore(L.build_store sbody ptr builder); ptr
+        | _ -> L.build_alloca (ltype_of_typ t) n builder
 	in StringMap.add n local_var m
       in
 
@@ -121,6 +139,15 @@ let translate (globals, functions) =
        Check local names first, then global names *)
     let lookup n = try StringMap.find n local_vars
                    with Not_found -> StringMap.find n global_vars
+    in
+
+    let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name ty m)
+      StringMap.empty (fdecl.sformals @ fdecl.slocals)
+    in
+
+    let type_of_identifier s =
+      try StringMap.find s symbols
+      with Not_found -> raise (Failure ("undeclared identifier " ^ s))
     in
 
     (* Construct code for an expression; return its value *)
@@ -181,6 +208,12 @@ let translate (globals, functions) =
             let lsb = get_array_acc_address s ea builder in
             let msb = expr builder eb in
                   ignore (L.build_store msb lsb builder); msb
+      | SDereference (s, m) -> let mem_p = get_smem_ptr builder s m in
+        L.build_load mem_p (s ^ m) builder
+      | SMemAssign (s, m, e) ->
+        let e' = expr builder e in
+        let mem_p = get_smem_ptr builder s m in
+        ignore(L.build_store e' mem_p builder); e'
       | SCall ("print", [e]) | SCall ("printb", [e]) ->
 	  L.build_call printf_func [| int_format_str ; (expr builder e) |]
       "printf" builder
@@ -202,6 +235,21 @@ let translate (globals, functions) =
          L.build_call fdef (Array.of_list llargs) result builder and 
          get_array_acc_address s e1 builder = L.build_gep (lookup s)
           [| (L.const_int i32_t 0); (expr builder e1) |] s builder
+
+    (* get the member m's pointer in struct *)
+    and get_smem_ptr builder s m =
+          let sname = match (type_of_identifier s) with
+                A.Struct n -> n
+              | _ -> raise (Failure ("Invalid access(.) operation for " ^ s)) in
+          let (_, sdecl) = StringMap.find sname struct_decls in
+          let idx =
+            let rec find_idx = function
+                [] -> raise (Failure ("Struct " ^ sname ^ " does not have member " ^ m))
+              | (_, var) :: _ when var = m -> 0
+              | _ :: tl -> 1 + find_idx tl
+            in find_idx sdecl.ssvar in
+          let struct_p = L.build_load (lookup s) s builder in
+          L.build_struct_gep struct_p idx (sname ^ m) builder
     in
 
     (* LLVM insists each basic block end with exactly one "terminator"

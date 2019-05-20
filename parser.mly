@@ -2,12 +2,17 @@
 
 %{
 open Ast
+
+let fst (a,_,_) = a;;
+let snd (_,b,_) = b;;
+let trd (_,_,c) = c;;
+
 %}
 
 %token SEMI LPAREN RPAREN LBRACE RBRACE LARRAY RARRAY COMMA
-%token PLUS MINUS TIMES DIVIDE ASSIGN DOLLAR
+%token PLUS MINUS TIMES DIVIDE ASSIGN DOLLAR PERIOD
 %token NOT EQ NEQ LT LEQ GT GEQ AND OR
-%token RETURN IF ELSE FOR WHILE INT BOOL CHAR STRING FLOAT VOID STRUCT PACKET MESSAGE INT_ BOOL_ BYTE
+%token RETURN IF ELSE FOR WHILE INT BOOL CHAR STRING FLOAT VOID STRUCT PACKET MESSAGE BYTE
 %token <int> LITERAL
 %token <bool> BLIT
 %token <string> ID FLIT
@@ -36,10 +41,10 @@ program:
   decls EOF { $1 }
 
 decls:
-   /* nothing */ { ([], [])               }
- | decls vdecl { (($2 :: fst $1), snd $1) }
- | decls fdecl { (fst $1, ($2 :: snd $1)) }
- /*| decls sdecl {  fst $1, snd $1, ($2 :: trd $1) }*/
+   /* nothing */ { [], [], [] }
+ | decls vdecl { ($2 :: fst $1), snd $1, trd $1 }
+ | decls fdecl { fst $1, ($2 :: snd $1), trd $1 }
+ | decls sdecl { fst $1, snd $1, ($2 :: trd $1) }
 
 fdecl:
    typ ID LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
@@ -68,15 +73,13 @@ typ:
   | array_t { $1       }
   | STRUCT ID { Struct ($2) }
 
-/*
 sdecl:
-    STRUCT ID LBRACE vdecl_list RBRACE
+    STRUCT ID LBRACE vdecl_list RBRACE SEMI
       {
         { sname = $2;
-          sformals = $4;
+          svar = $4;
       }
     }
-*/
 
 vdecl_list:
     /* nothing */    { [] }
@@ -122,7 +125,9 @@ expr:
   | expr AND    expr { Binop($1, And,   $3)   }
   | expr OR     expr { Binop($1, Or,    $3)   }
   | ID LARRAY expr RARRAY ASSIGN expr  { ArrayAssign($1, $3, $6) }
-  | ID LARRAY expr RARRAY   { ArrayAccess($1, $3) }
+  | ID LARRAY expr RARRAY { ArrayAccess($1, $3) }
+  | ID PERIOD ID     { Dereference($1, $3)    }
+  | ID PERIOD ID ASSIGN expr { MemAssign($1, $3, $5) }
   | MINUS expr %prec NOT { Unop(Neg, $2)      }
   | NOT expr         { Unop(Not, $2)          }
   | ID ASSIGN expr   { Assign($1, $3)         }
