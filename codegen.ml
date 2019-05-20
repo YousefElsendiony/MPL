@@ -105,6 +105,7 @@ let translate (globals, functions, structs) =
     and float_format_str = L.build_global_stringptr "%g\n" "fmt" builder
     and char_format_str = L.build_global_stringptr "%c\n" "fmt" builder
     and string_format_str = L.build_global_stringptr "%s\n" "fmt" builder
+    and raw_format_str = L.build_global_stringptr "0x%x\n" "fmt" builder
     in
 
     (* Construct the function's "locals": formal arguments and locally
@@ -214,6 +215,9 @@ let translate (globals, functions, structs) =
         let e' = expr builder e in
         let mem_p = get_smem_ptr builder s m in
         ignore(L.build_store e' mem_p builder); e'
+      | SCall ("raw", [e]) ->
+        L.build_call printf_func [| raw_format_str ; (expr builder e) |]
+          "printf" builder
       | SCall ("print", [e]) | SCall ("printb", [e]) ->
 	  L.build_call printf_func [| int_format_str ; (expr builder e) |]
       "printf" builder

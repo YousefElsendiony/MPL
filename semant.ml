@@ -43,7 +43,8 @@ let check (globals, functions, structs) =
                                ("prints", String);
 			                         ("printb", Bool);
 			                         ("printf", Float);
-			                         ("printbig", Int) ]
+                               ("printbig", Int);
+                               ("raw", Int) ]
   in
 
   (* Add function name to symbol table *)
