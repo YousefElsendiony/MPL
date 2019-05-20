@@ -59,11 +59,7 @@ let rec string_of_sexpr (t, e) =
   | SArrayLiteral(el, t) -> string_of_typ t ^ "[" ^ String.concat ", " (List.map (fun e -> string_of_sexpr e) el) ^ "]"
   | SBinop(e1, o, e2) ->
       string_of_sexpr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_sexpr e2
-  | SUnop(o, e) -> 
-      let converted_Sstring = match o with 
-        Dollar  ->  Printf.sprintf "%X" (int_of_string (string_of_sexpr e))
-        | _     ->  string_of_sexpr e
-      in  string_of_uop o ^ converted_Sstring
+  | SUnop(o, e) -> string_of_uop o ^ string_of_sexpr e
   | SArrayAccess(a, e, t) -> string_of_typ t ^ " " ^ a ^ "[" ^ string_of_sexpr e ^ "]"
   | SArrayAssign(a, e1, e2) -> a ^ "[" ^ string_of_sexpr e1 ^ "] = " ^ string_of_sexpr e2
   | SDereference (s, e) -> s ^ "." ^ e

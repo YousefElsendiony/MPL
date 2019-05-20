@@ -90,11 +90,7 @@ let rec string_of_expr = function
   | Id(s) -> s
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
-  | Unop(o, e) -> 
-      let converted_string = match o with 
-        Dollar  ->  Printf.sprintf "%X" (int_of_string (string_of_expr e))
-        | _     ->  string_of_expr e
-      in  string_of_uop o ^ converted_string
+  | Unop(o, e) -> string_of_uop o ^ string_of_expr e
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"

@@ -201,7 +201,7 @@ let translate (globals, functions, structs) =
             let e' = expr builder e in
                 (match op with
                   A.Neg when t = A.Float -> L.build_fneg
-                | A.Dollar               -> L.build_neg
+                | A.Dollar               -> L.build_add (L.const_int i32_t 0)
                 | A.Neg                  -> L.build_neg
                 | A.Not                  -> L.build_not) e' "tmp" builder
       | SArrayAccess (s, e, _) -> L.build_load (get_array_acc_address s e builder) s builder
